@@ -8,12 +8,13 @@ githubUsers = new GithubUsers // instantiate the backbone collection
 var login = new Promise (function(resolve, reject) {
   $('.github-login').click(githubLogin);
   function githubLogin(){
+    $('.github-login').addClass('btn-danger')
 
-        hello('github').login(function(response){
-          console.log('you are logged into github: ', response);
-          response.authResponse.access_token ? access_token = response.authResponse.access_token : access_token = 'no token';
-          resolve(access_token);
-        });
+    hello('github').login(function(response){
+      console.log('you are logged into github: ', response);
+      response.authResponse.access_token ? access_token = response.authResponse.access_token : access_token = 'no token';
+      resolve(access_token);
+    });
 
   }
 })
@@ -49,107 +50,149 @@ login.then( function(access_token){
   currentUser.access_string = '&access_token=' + access_token;
 
   console.log('api url and access_string is: ', url + '?' + currentUser.access_string);
+  $('.github-login').removeClass('btn-danger')  
+  $('.github-login').addClass('btn-warning')  
   
   //get the authenticated user's data
   $.get(url + '/user?'+ currentUser.access_string, function(response){
     $.extend(currentUser, response)
     console.log('currently logged in user  ', currentUser);
+    $('.github-login').addClass('btn-success')
   }) 
 })
 
-//the list of usernames provided by the logged in user will go here
-var userLoginsArray = ['joshuamaxwell', 'colorTurtle', 'masondesu'];
-console.log('userLoginsArray contains the following: ', userLoginsArray);
+$('.chart-users').click(function(){
+  $('.chart-users').addClass('btn-warning')
+  //the list of usernames provided by the logged in user will go into this array
+  userLoginsString = $('.users-csv').val();
+  $('.users-csv').val('');
+  userLoginsArray = userLoginsString.replace(/\s+/g,'').split(',');
+  console.log('userLoginsArray contains the following: ', userLoginsArray);
+  retreiveGithubUsers(userLoginsArray).then(function(){
+    $('.chart-users').addClass('btn-success');
+  })
+})
+
+
+
+var exampleLogins = ['joshuamaxwell', 'colorTurtle', 'masondesu'];
+$('.users-csv').val(exampleLogins.join(', '));
+
+
+
+//functions
+
 
 //function takes an array of user login strings 
 //gets their user object data from github to create a githubUser model
 //and adds the github user model object to the githubUsers collection
 function retreiveGithubUsers (userLoginsArray) {
-// now go through that list of usernames and look up all the repositories for each
-  _.each(userLoginsArray, function(userLogin){
-    $.get(url + '/users/' + userLogin + '?' + currentUser.access_string , function(githubUser){
-      console.log('Charted User\'s github data that needs saved to collection', githubUser);
-      //save each one of these as a new model to the collection
-      githubUsers.add(new GithubUser(githubUser));
-    })
-  })
+  return new Promise(function(resolve, reject){
+  var numResponses = 0;
 
-  //this log should get run after every request is returned
-  console.log('the collection should be filled now: ', githubUsers.models);
-
-}
-
-// extend the user's object with a repos property
-function getUserRepos(githubUser) {
-  
-  console.log('each users repos url: ', githubUser.get('repos_url'));
-  $.get(githubUser.get('repos_url') + '?' + currentUser.access_string, function(repos){
-    console.log('I think this should be each users repos array object  ', repos);
-    //I'm going to want to add that array object as one of each of their properties
-    githubUser.set('repos', repos);
-  })
-  
-}
-
-// take a githubUser model and extend it's repos property object with commit time stamps
-function inflateUserRepos (githubUser) {
-  githubUser.set('myCommits', [])
-  var numResponses = 0
-  
-  var p2 = new Promise(function(resolve, reject){
-    _.each(githubUser.get('repos'), function(repoSummary){
-      $.get(repoSummary.url + '/commits?' + currentUser.access_string, function(commits){
-        //add to this number for every response (these are successful)
+    _.each(userLoginsArray, function(userLogin){
+      $.get(url + '/users/' + userLogin + '?' + currentUser.access_string , function(githubUser){
+        //I got a response so add one
         numResponses += 1
-        console.log('got ', commits.length, ' commits from ', repoSummary.name, '. That was ', numResponses, ' out of ', githubUser.get('repos').length, ' for ', githubUser.get('login'));
-        
-        // add this array of commit data as a property of the user's repo for later?
-        repoSummary.commits = commits 
 
-        // only if the user id matches then
-        filteredCommits = _.filter(commits, function(commit){return commit.committer.id === githubUser.get('id')})
-        console.log(filteredCommits.length, ' of those were actually from that user');
-        
-        //use map to create a flattened simplified summary of the users commits to her own repo
-        myCommits = _.map(filteredCommits, function(commit){
-          myCommit = {}
-          myCommit.repoName = repoSummary.name;
-          myCommit.date = commit.commit.committer.date;
-          myCommit.message = commit.commit.message;
-          return myCommit
-        })
+        //save each one of these as a new model to the collection
+        githubUsers.add(githubUser);
+        console.log('githubUser\'s github data that is saved to githubUsers collection', githubUser);
 
-        // concatinate the filtered , simplified array to the githubUser.myCommits property 
-        githubUser.set('myCommits', githubUser.get('myCommits').concat(myCommits))
-        console.log('added commits info to ', githubUser.get('login'), '\'s  repoSummary and concatinated to githubUser.myCommits array. It looks like this ', githubUser.get('myCommits'));
-        
-        
-        //starting from 0, add one to this numResponses variable, 
-        //once it equals the length of the array that is 
-        //being loped through we should resolve the promise
-        if (numResponses === githubUser.get('repos').length) resolve(githubUser)
-      }).fail(
-        function(){
-                //add in the failed responses too, please
-                numResponses += 1
-                console.log('got NO commits from ', repoSummary.name, '. That was ', numResponses, ' out of ', githubUser.get('repos').length, ' for ', githubUser.get('login'));
-                if (numResponses === githubUser.get('repos').length) resolve(githubUser)
+        //check are we done yet?
+        if(numResponses === userLoginsArray.length) resolve();
+      }).fail(function(){
+        // ...still got a response
+        numResponses += 1
+        // don't add it to the collection at this point
+        // githubUsers.add(new GithubUser({login: userLogin}));
+        console.log('this user didn not get data back from api call ', userLogin, ' and was not added to the backbone collection');
+        //check are we done yet?
+        if(numResponses === userLoginsArray.length) resolve();
       })
     })
-  })
 
-  p2.then(function(githubUser){
-    console.log('added commits info to the githubUser.commits . user: ', githubUser.get('login'), ' commits: ', githubUser.get('commits'));
-  })
+  }) 
 }
 
+// these were moved to collection constructor methods that run on whenever a model is added
+
+// // extend the user's object with a repos property
+// function getUserRepos(githubUser) {
+//   // console.log('each users repos url: ', githubUser.get('repos_url'));
+//   $.get(githubUser.get('repos_url') + '?' + currentUser.access_string, function(repos){
+//     console.log('I think this should be each users repos array object  ', repos);
+//     //I'm going to want to add that array object as one of each of their properties
+//     githubUser.set('repos', repos);
+//     resolve(repos);
+//   }).fail(function(){
+//     reject();
+//   })
+// }
+
+// // take a githubUser model and extend it's repos property object with commit time stamps
+// // also adds a myCommits property to the githubUser
+// function inflateUserRepos (githubUser) {
+//   //initialize some variables
+//   githubUser.set('myCommits', [])
+//   var numResponses = 0
+  
+//   var p2 = new Promise(function(resolve, reject){
+//     _.each(githubUser.get('repos'), function(repoSummary){
+//       $.get(repoSummary.url + '/commits?' + currentUser.access_string, function(commits){
+//         //add to this number for every response (these are successful)
+//         numResponses += 1
+//         console.log('got ', commits.length, ' commits from ', repoSummary.name, '. That was ', numResponses, ' out of ', githubUser.get('repos').length, ' for ', githubUser.get('login'));
+        
+//         // add this array of commit data as a property of the user's repo for later?
+//         repoSummary.commits = commits 
+
+//         // filter by only if the user id matches the committer ID
+//         filteredCommits = _.filter(commits, function(commit){return commit.committer ? commit.committer.id : null === githubUser.get('id')})
+//         console.log(filteredCommits.length, ' of those were actually from that user');
+        
+//         //use map to create a flattened simplified summary of the users commits to her own repos
+//         myCommits = _.map(filteredCommits, function(commit){
+//           myCommit = {}
+//           myCommit.repoName = repoSummary.name;
+//           myCommit.date = commit.commit.committer.date;
+//           myCommit.message = commit.commit.message;
+//           myCommit.sha = commit.sha;
+//           return myCommit
+//         })
+
+//         // concatinate the filtered , simplified array to the githubUser.myCommits property 
+//         githubUser.set('myCommits', githubUser.get('myCommits').concat(myCommits))
+        
+//         //starting from 0, add one to this numResponses variable, 
+//         //once it equals the length of the array that is 
+//         //being loped through we should resolve the promise
+//         if (numResponses === githubUser.get('repos').length) resolve(githubUser)
+//       }).fail(
+//         function(err){
+//                 //add in the failed responses too, please
+//                 numResponses += 1
+//                 console.log('got NO commits from ', repoSummary.name, '. That was ', numResponses, ' out of ', githubUser.get('repos').length, ' for ', githubUser.get('login'));
+//                 if (numResponses === githubUser.get('repos').length) resolve(githubUser)
+//                 return err;
+//       })
+//     })
+//   })
+
+//   p2.then(function(githubUser){
+//     console.log('added commits info to ', githubUser.get('login'), '\'s  repoSummary and concatinated to githubUser.myCommits array. It looks like this ', githubUser.get('myCommits'));
+//   })
+// }
+
  
-
-
-//testing
+// for convenience?
 function getAllUsersRepos (githubUsers) {
-  githubUsers.each(function(githubUser){
-    getUserRepos(githubUser)
+  return new Promise(function(resolve, reject){
+
+    githubUsers.each(function(githubUser){
+      getUserRepos(githubUser)
+    })
+
   })
 }
 
@@ -159,64 +202,3 @@ function inflateAllUsersRepos (githubUsers) {
   })
 }
 
-//go through each user's repo api uri and request commit data for 
-//each one to store and compare with other's combined repos
-
-
-
-
-// function allUsersCommits(url) {
-//   console.log('inside commits now: ', url);
-// }
-
-// console.log(usersRepos(response_users_joshuamaxwell_repos));
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// function makeid()
-// {
-//     var text = "";
-//     var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-
-//     for( var i=0; i < 15; i++ )
-//         text += possible.charAt(Math.floor(Math.random() * possible.length));
-
-//     return text;
-// }
-
-// var randomString = makeid();
-
-// var params = {
-//   client_id: '8159bee811196d909ba6',
-//   redirect_uri: 'http://joshuamaxwell.github.io/git-some-sleep/index.html',
-//   scope: '',
-//   state: randomString
-// }
-
-// var url = '//github.com/login/oauth/authorize'
-// url += '?' + $.param(params)
-// console.log(url);
-
-// location.replace(url);
-
-
-
-// var params = {
-//   client_id: '8159bee811196d909ba6',
-//   code: '',
-//   redirect_uri: 'http://joshuamaxwell.github.io/git-some-sleep/index.html'
-// }
-// $.post('//github.com/login/oauth/access_token')

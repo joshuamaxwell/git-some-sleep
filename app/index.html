@@ -38,12 +38,18 @@
             </div>
 
             <div class="jumbotron">
-                <h1>'Allo, 'Allo!</h1>
-                <p class="lead">Always a pleasure scaffolding your apps.</p>
-                <p><a class="btn btn-lg btn-success" href="#">Splendid!</a></p>
-                <button type="button" class="btn btn-default github-login">Log into github</button>
-            </div>
+                <h1>Why are you still awake?</h1>
+                <p class="lead">Log-in first to query users</p>
 
+                <button type="button" class="btn btn-default btn-lg github-login">Log into github</button>
+                <div class="input-group input-group-lg users-input">
+                  <input type="text" class="form-control users-csv">
+                  <span class="input-group-btn">
+                    <button class="btn btn-default chart-users" type="button">Chart!</button>
+                  </span>
+                </div><!-- /input-group -->
+            </div>
+            <div class="user-cards"></div>
             
 
             <div class="footer">
@@ -52,6 +58,17 @@
 
         </div>
 
+        <script type="text/template" id="github-user-card-template">
+            <div class="panel-body">
+                <div class="avatar-img">
+                    <img src="<%= model.avatar_url %>">
+                </div>
+                <span class="userLogin">Login: <%= model.login %></span>
+                <span class="commits">Number of commits: <%= model.myCommits.length %></span>
+            </div>
+        </script>
+        
+        
 
         <!-- build:js scripts/vendor.js -->
         <!-- bower:js -->
@@ -88,8 +105,8 @@
         <!-- endbuild -->
 
         <!-- build:js({app,.tmp}) scripts/main.js -->
-        <script src="scripts/data.js"></script>
-        <script src="scripts/git-hub-user.js"></script>
+        <script src="scripts/github-user.js"></script>
+        <script src="scripts/github-user-view.js"></script>
         <script src="scripts/main.js"></script>
         <!-- endbuild -->
 </body>
