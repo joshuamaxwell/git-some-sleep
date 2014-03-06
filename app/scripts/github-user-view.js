@@ -4,6 +4,7 @@ var GithubUserView = Backbone.View.extend({
   initialize: function () {
     $('.user-cards').append( this.el )
     this.render()
+    this.listenTo(this.model, 'change', this.render);
   },
 
   renderTemplate: _.template($('#github-user-card-template').text()),

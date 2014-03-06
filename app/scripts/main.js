@@ -11,6 +11,8 @@ var login = new Promise (function(resolve, reject) {
     $('.github-login').addClass('btn-danger')
 
     hello('github').login(function(response){
+      $('.github-login').removeClass('btn-danger')  
+      $('.github-login').addClass('btn-warning')  
       console.log('you are logged into github: ', response);
       response.authResponse.access_token ? access_token = response.authResponse.access_token : access_token = 'no token';
       resolve(access_token);
@@ -50,8 +52,6 @@ login.then( function(access_token){
   currentUser.access_string = '&access_token=' + access_token;
 
   console.log('api url and access_string is: ', url + '?' + currentUser.access_string);
-  $('.github-login').removeClass('btn-danger')  
-  $('.github-login').addClass('btn-warning')  
   
   //get the authenticated user's data
   $.get(url + '/user?'+ currentUser.access_string, function(response){

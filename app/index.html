@@ -61,10 +61,10 @@
         <script type="text/template" id="github-user-card-template">
             <div class="panel-body">
                 <div class="avatar-img">
-                    <img src="<%= model.avatar_url %>">
+                    <img src="<%= this.model.get('avatar_url') %>">
                 </div>
-                <span class="userLogin">Login: <%= model.login %></span>
-                <span class="commits">Number of commits: <%= model.myCommits.length %></span>
+                <span class="userLogin">Login: <%= this.model.get('login') %></span>
+                <span class="commits">Number of commits: <%= this.model.get('myCommits').length %></span>
             </div>
         </script>
         
