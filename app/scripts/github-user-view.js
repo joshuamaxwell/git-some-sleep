@@ -10,7 +10,6 @@ var GithubUserView = Backbone.View.extend({
   renderTemplate: _.template($('#github-user-card-template').text()),
 
   render: function(){
-    //this.model is currently undefined
     this.$el.html(this.renderTemplate(this.model))
   }
 })
